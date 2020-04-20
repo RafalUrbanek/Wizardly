@@ -10,7 +10,7 @@ drawableObjects = []
 windowName = 'Game Window'
 fpsCounter = 0
 fpsFullSec = 0
-playerSpeed = 5
+player_default_speed = 10
 initialLife = 100
 initialMana = 100
 windowCenter = (640, 385)
@@ -63,33 +63,73 @@ class Button(object):
 
 
 class GameObj(object):
-    def __init__(self, pos_x, pos_y, pic_id):
-        self.pos_x = pos_x
-        self.pos_y = pos_y
-        self.pic_id = pic_id
+    def __init__(self, map_pos_x, map_pos_y, pic_url):
+        self.map_pos_x = map_pos_x
+        self.map_pos_y = map_pos_y
+        self.pic_url = pic_url
 
     def background_move(self):
         """Moves all of the background objects when the player moves"""
+        keys = pygame.key.get_pressed()
 
-        if lookDown is True:
-            self.pos_y -= playerSpeed
-        if lookLeft is True:
-            self.pos_x += playerSpeed
-        if lookRight is True:
-            self.pos_x -= playerSpeed
-        if lookUp is True:
-            self.pos_y += playerSpeed
+        if keys[pygame.K_RIGHT]:
+            self.map_pos_x -= player.speed//5
+        if keys[pygame.K_LEFT]:
+            self.map_pos_x += player.speed//5
+        if keys[pygame.K_UP]:
+            self.map_pos_y += player.speed//5
+        if keys[pygame.K_DOWN]:
+            self.map_pos_y -= player.speed//5
 
-    def get_obj_graphics(self):
-        print("given ID: " + str(self.pic_id))
-        # method should return surface with the correct picture for specific id
+    def draw(self, direction=0):
+        img = pygame.image.load(self.pic_url)
+        rotated_img = pygame.transform.rotate(img, direction)
+        window.blit(rotated_img, location_from_map(self.map_pos_x, self.map_pos_y))
+
+
+def location_from_map(map_pos_x, map_pos_y):
+    """defines where on the window the element should be displayed based on window pos and map corner"""
+    pos_x = map_pos_x - gameMap.current_corner_pos_x
+    pos_y = map_pos_y - gameMap.current_corner_pos_y
+    location = (pos_x, pos_y)
+    return location
+
+
+class Map:
+    def __init__(self, width, height, spawn_x, spawn_y):
+        self.width = width
+        self.height = height
+        self.spawn_x = spawn_x
+        self.spawn_y = spawn_y
+        self.current_corner_pos_x = spawn_x
+        self.current_corner_pos_y = spawn_y
+        self.tiles_x = self.width // 64
+        self.tiles_y = self.height // 64
+        self.row = []
+        self.map_matrix = []
+
+        for y in range(self.tiles_y):
+            self.map_matrix.append(self.row)
+            for x in range(self.tiles_x):
+                self.map_matrix[y].append(1)
+
+    def draw(self):
+        for y in range(self.tiles_y):
+            for x in range(self.tiles_x):
+                window.blit(self.get_bkg_surface(self.map_matrix[x][y]), ((y * 64) - location_from_map(self.spawn_x, self.spawn_y)[0],
+                            (x * 64) - location_from_map(self.spawn_x, self.spawn_y)[1]))
+
+    def get_bkg_surface(self, tile_id):
+        # implementation of different tiles based on title_id required
+        pic = pygame.image.load('pixels/backgrounds/temp_tiles.png')
+        return pic
 
 
 class Player(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.vel = playerSpeed
+        self.speed = player_default_speed
         self.life = initialLife
         self.maxLife = initialLife
         self.mana = initialMana
@@ -125,7 +165,7 @@ def draw_bottom_Pane():
 
 def redraw_game_window():
     pygame.display.update()
-    window.fill((0, 200, 0))
+    window.fill((0, 0, 0))
 
 
 def get_mouse_angle():
@@ -144,7 +184,6 @@ def mouseClickListener():
         for btn in buttonsDictionary:
             if buttonsDictionary[btn][0][0] < mouse_position[0] < buttonsDictionary[btn][1][0] and \
                     buttonsDictionary[btn][0][1] < mouse_position[1] < buttonsDictionary[btn][1][1]:
-                print("button pressed")
                 command = btn + ".is_clicked = True"
                 exec(command)
     else:
@@ -169,9 +208,11 @@ def show_title_and_fps():
         fpsCounter = 0
 
 
-# OBJECTS
+# OBJECT INSTANTIATION
 
 player = Player(48, 64)
+gameMap = Map(2000, 2000, 500, 500)
+obstacle = GameObj(800, 800, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
 testObj = GameObj(20, 20, 2)
 inventory = Button('inventory', 418, 860, 488, 900, 'pixels/backgrounds/buttonUnpressedInventory.png',
                    'pixels/backgrounds/buttonPressedInventory.png')
@@ -186,9 +227,12 @@ options = Button('options', 790, 860, 860, 900, 'pixels/backgrounds/buttonUnpres
 while run is True:
     clock.tick(60)
     redraw_game_window()
+    gameMap.draw()
     show_title_and_fps()
-    (get_mouse_angle())
+    get_mouse_angle()
     player.draw()
+    obstacle.background_move()
+    obstacle.draw()
     draw_bottom_Pane()
     mouseClickListener()
     for event in pygame.event.get():
