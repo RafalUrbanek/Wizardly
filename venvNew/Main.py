@@ -82,9 +82,9 @@ class GameObj(object):
             self.map_pos_y -= player.speed//5
 
     def draw(self, direction=0):
-        img = pygame.image.load(self.pic_url)
-        rotated_img = pygame.transform.rotate(img, direction)
-        window.blit(rotated_img, location_from_map(self.map_pos_x, self.map_pos_y))
+        img = pygame.image.load(self.pic_url).convert()
+        rotated_img = pygame.transform.rotate(img, direction).convert()
+        window.blit(img, location_from_map(self.map_pos_x, self.map_pos_y))
 
 
 def location_from_map(map_pos_x, map_pos_y):
@@ -95,7 +95,7 @@ def location_from_map(map_pos_x, map_pos_y):
     return location
 
 
-class Map:
+class Map():
     def __init__(self, width, height, spawn_x, spawn_y):
         self.width = width
         self.height = height
@@ -107,21 +107,29 @@ class Map:
         self.tiles_y = self.height // 64
         self.row = []
         self.map_matrix = []
+        self.map_img = []
 
         for y in range(self.tiles_y):
             self.map_matrix.append(self.row)
             for x in range(self.tiles_x):
                 self.map_matrix[y].append(1)
 
+    def initialize(self):
+        """method loads background images into memory for later use in draw() method"""
+        self.map_img.append(pygame.image.load('pixels/backgrounds/temp_tiles.png').convert())
+        self.map_img.append(pygame.image.load('pixels/backgrounds/temp_tiles.png').convert())
+        print(self.map_img)
+
     def draw(self):
+        """Draws the background based on the map_matrix"""
         for y in range(self.tiles_y):
             for x in range(self.tiles_x):
-                window.blit(self.get_bkg_surface(self.map_matrix[x][y]), ((y * 64) - location_from_map(self.spawn_x, self.spawn_y)[0],
+                window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.spawn_x, self.spawn_y)[0],
                             (x * 64) - location_from_map(self.spawn_x, self.spawn_y)[1]))
 
     def get_bkg_surface(self, tile_id):
         # implementation of different tiles based on title_id required
-        pic = pygame.image.load('pixels/backgrounds/temp_tiles.png')
+        pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
         return pic
 
 
@@ -211,7 +219,8 @@ def show_title_and_fps():
 # OBJECT INSTANTIATION
 
 player = Player(48, 64)
-gameMap = Map(2000, 2000, 500, 500)
+gameMap = Map(1984, 1984, 500, 500)
+gameMap.initialize()
 obstacle = GameObj(800, 800, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
 testObj = GameObj(20, 20, 2)
 inventory = Button('inventory', 418, 860, 488, 900, 'pixels/backgrounds/buttonUnpressedInventory.png',
