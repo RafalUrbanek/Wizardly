@@ -10,18 +10,14 @@ drawableObjects = []
 windowName = 'Game Window'
 fpsCounter = 0
 fpsFullSec = 0
-player_default_speed = 10
+player_default_speed = 30
 initialLife = 100
 initialMana = 100
 windowCenter = (640, 385)
 playerAngle = 0
 selectTool = (0, 0, 0, 0, 0, 0, 0, 0, 0)
 buttonsDictionary = {}
-
-lookDown = False
-lookLeft = False
-lookRight = False
-lookUp = False
+key_pressed = {"left": False, "right": False, "up": False, "down": False}
 
 run = True
 
@@ -63,28 +59,38 @@ class Button(object):
 
 
 class GameObj(object):
-    def __init__(self, map_pos_x, map_pos_y, pic_url):
+    def __init__(self, map_pos_x, map_pos_y, pic_url, direction=0):
         self.map_pos_x = map_pos_x
         self.map_pos_y = map_pos_y
         self.pic_url = pic_url
+        self.direction = direction
+        self.img = self.get_obj_img()
+
+    def get_obj_img(self):
+        img = pygame.image.load(self.pic_url)
+        if self.direction == 1:
+            rotated_img = pygame.transform.rotate(img, 90).convert()
+        elif self.direction == 2:
+            rotated_img = pygame.transform.rotate(img, 180).convert()
+        elif self.direction == 3:
+            rotated_img = pygame.transform.rotate(img, 270).convert()
+        else:
+            rotated_img = img.convert()
+        return rotated_img
 
     def background_move(self):
         """Moves all of the background objects when the player moves"""
-        keys = pygame.key.get_pressed()
-
-        if keys[pygame.K_RIGHT]:
+        if key_pressed["right"]:
             self.map_pos_x -= player.speed//5
-        if keys[pygame.K_LEFT]:
+        if key_pressed["left"]:
             self.map_pos_x += player.speed//5
-        if keys[pygame.K_UP]:
+        if key_pressed["up"]:
             self.map_pos_y += player.speed//5
-        if keys[pygame.K_DOWN]:
+        if key_pressed["down"]:
             self.map_pos_y -= player.speed//5
 
-    def draw(self, direction=0):
-        img = pygame.image.load(self.pic_url).convert()
-        rotated_img = pygame.transform.rotate(img, direction).convert()
-        window.blit(img, location_from_map(self.map_pos_x, self.map_pos_y))
+    def draw(self):
+        window.blit(self.img, location_from_map(self.map_pos_x, self.map_pos_y))
 
 
 def location_from_map(map_pos_x, map_pos_y):
@@ -95,7 +101,14 @@ def location_from_map(map_pos_x, map_pos_y):
     return location
 
 
-class Map():
+def create_map_file(map_load):
+    file = open("map.txt", "w+")
+    for line in range(len(map_load)):
+        file.write(str(map_load[line]) + "\n")
+    file.close()
+
+
+class Map:
     def __init__(self, width, height, spawn_x, spawn_y):
         self.width = width
         self.height = height
@@ -110,26 +123,41 @@ class Map():
         self.map_img = []
 
         for y in range(self.tiles_y):
-            self.map_matrix.append(self.row)
             for x in range(self.tiles_x):
-                self.map_matrix[y].append(1)
+                self.row.append(1)
+            self.map_matrix.append(self.row)
+            self.row = []
+
+    def background_move(self):
+        """Moves all of the background objects when the player moves"""
+        if key_pressed["left"]:
+            self.spawn_x -= player.speed//5
+        if key_pressed["right"]:
+            self.spawn_x += player.speed//5
+        if key_pressed["down"]:
+            self.spawn_y += player.speed//5
+        if key_pressed["up"]:
+            self.spawn_y -= player.speed//5
 
     def initialize(self):
         """method loads background images into memory for later use in draw() method"""
-        self.map_img.append(pygame.image.load('pixels/backgrounds/temp_tiles.png').convert())
-        self.map_img.append(pygame.image.load('pixels/backgrounds/temp_tiles.png').convert())
-        print(self.map_img)
+        self.map_img.append(self.get_bkg_surface(1))
+        self.map_img.append(self.get_bkg_surface(1))
 
     def draw(self):
         """Draws the background based on the map_matrix"""
         for y in range(self.tiles_y):
             for x in range(self.tiles_x):
-                window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.spawn_x, self.spawn_y)[0],
-                            (x * 64) - location_from_map(self.spawn_x, self.spawn_y)[1]))
+                window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.spawn_x
+                            , self.spawn_y)[0], (x * 64) - location_from_map(self.spawn_x, self.spawn_y)[1]))
 
     def get_bkg_surface(self, tile_id):
         # implementation of different tiles based on title_id required
         pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
+        if tile_id == 0:
+            pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
+        elif tile_id == 1:
+            pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
         return pic
 
 
@@ -194,6 +222,9 @@ def mouseClickListener():
                     buttonsDictionary[btn][0][1] < mouse_position[1] < buttonsDictionary[btn][1][1]:
                 command = btn + ".is_clicked = True"
                 exec(command)
+            else:
+                command = btn + ".is_clicked = False"
+                exec(command)
     else:
         unclick_buttons()
 
@@ -216,13 +247,36 @@ def show_title_and_fps():
         fpsCounter = 0
 
 
-# OBJECT INSTANTIATION
+def keyListener():
+    key = pygame.key.get_pressed()
+    if key[pygame.K_RIGHT]:
+        key_pressed["right"] = True
+    else:
+        key_pressed["right"] = False
 
+    if key[pygame.K_LEFT]:
+        key_pressed["left"] = True
+    else:
+        key_pressed["left"] = False
+
+    if key[pygame.K_UP]:
+        key_pressed["up"] = True
+    else:
+        key_pressed["up"] = False
+
+    if key[pygame.K_DOWN]:
+        key_pressed["down"] = True
+    else:
+        key_pressed["down"] = False
+
+
+# OBJECT INSTANTIATION
 player = Player(48, 64)
 gameMap = Map(1984, 1984, 500, 500)
 gameMap.initialize()
+create_map_file(gameMap.map_matrix)
 obstacle = GameObj(800, 800, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
-testObj = GameObj(20, 20, 2)
+
 inventory = Button('inventory', 418, 860, 488, 900, 'pixels/backgrounds/buttonUnpressedInventory.png',
                    'pixels/backgrounds/buttonPressedInventory.png')
 spellbook = Button('spellbook', 542, 860, 612, 900, 'pixels/backgrounds/buttonUnpressedSpellbook.png',
@@ -236,6 +290,8 @@ options = Button('options', 790, 860, 860, 900, 'pixels/backgrounds/buttonUnpres
 while run is True:
     clock.tick(60)
     redraw_game_window()
+    keyListener()
+    gameMap.background_move()
     gameMap.draw()
     show_title_and_fps()
     get_mouse_angle()
@@ -244,6 +300,7 @@ while run is True:
     obstacle.draw()
     draw_bottom_Pane()
     mouseClickListener()
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
