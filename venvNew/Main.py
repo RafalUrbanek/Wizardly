@@ -1,3 +1,5 @@
+import random
+
 import pygame
 import math
 
@@ -16,6 +18,7 @@ initialMana = 100
 windowCenter = (640, 385)
 playerAngle = 0
 selectTool = (0, 0, 0, 0, 0, 0, 0, 0, 0)
+game_level = 1
 buttonsDictionary = {}
 key_pressed = {"left": False, "right": False, "up": False, "down": False}
 
@@ -102,9 +105,11 @@ def location_from_map(map_pos_x, map_pos_y):
 
 
 def create_map_file(map_load):
-    file = open("map.txt", "w+")
+    file = open ("maps/map.txt", "w+")
     for line in range(len(map_load)):
-        file.write(str(map_load[line]) + "\n")
+        for tile in range(len(map_load[line])):
+            file.write(str(map_load[line][tile]))
+        file.write("\n")
     file.close()
 
 
@@ -121,10 +126,40 @@ class Map:
         self.row = []
         self.map_matrix = []
         self.map_img = []
+        self.initialize_map()
+        self.line = None
+        self.line_counter = None
 
+    def load_map(self, map_pointer):
+        """Loads map from the given map_pointer"""
+        self.line_counter = 0
+        with open(map_pointer, 'r') as mapFile:
+            while True:
+                self.line = mapFile.readline()
+                if self.line == "":
+                    print("loaded all lines from map file")
+                    break
+                else:
+                    for y in range(self.line.__len__() - 1):
+                        self.map_matrix[self.line_counter][y] = int(self.line[y])
+                self.line_counter += 1
+
+    def initialize_map(self):
+        """builds initial map template"""
         for y in range(self.tiles_y):
             for x in range(self.tiles_x):
-                self.row.append(1)
+                    self.row.append(0)
+            self.map_matrix.append(self.row)
+            self.row = []
+
+    def generate_new_map(self, wall_count=3):
+        """generates new random map"""
+        for y in range(self.tiles_y):
+            for x in range(self.tiles_x):
+                if random.randint(0, wall_count) == wall_count:
+                    self.row.append(0)
+                else:
+                    self.row.append(1)
             self.map_matrix.append(self.row)
             self.row = []
 
@@ -141,21 +176,21 @@ class Map:
 
     def initialize(self):
         """method loads background images into memory for later use in draw() method"""
-        self.map_img.append(self.get_bkg_surface(1))
+        self.map_img.append(self.get_bkg_surface(0))
         self.map_img.append(self.get_bkg_surface(1))
 
     def draw(self):
         """Draws the background based on the map_matrix"""
         for y in range(self.tiles_y):
             for x in range(self.tiles_x):
-                window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.spawn_x
+                if self.map_matrix[x][y] != 0:
+                    window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.spawn_x
                             , self.spawn_y)[0], (x * 64) - location_from_map(self.spawn_x, self.spawn_y)[1]))
 
     def get_bkg_surface(self, tile_id):
-        # implementation of different tiles based on title_id required
-        pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
+        """implementation of different tiles based on title_id required"""
         if tile_id == 0:
-            pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
+            pic = None
         elif tile_id == 1:
             pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
         return pic
@@ -176,7 +211,6 @@ class Player(object):
 
     def draw(self):
         """Draws the main character in the middle of the screen"""
-
         rotated_img = pygame.transform.rotate(self.player_img, self.direction)
         img_size = rotated_img.get_rect().size
         window.blit(rotated_img, (int(windowCenter[0] - img_size[0] / 2), int(windowCenter[1] - img_size[1] / 2)))
@@ -274,7 +308,8 @@ def keyListener():
 player = Player(48, 64)
 gameMap = Map(1984, 1984, 500, 500)
 gameMap.initialize()
-create_map_file(gameMap.map_matrix)
+gameMap.load_map("maps/map.txt")
+#create_map_file(gameMap.map_matrix)
 obstacle = GameObj(800, 800, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
 
 inventory = Button('inventory', 418, 860, 488, 900, 'pixels/backgrounds/buttonUnpressedInventory.png',
