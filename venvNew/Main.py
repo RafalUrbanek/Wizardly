@@ -113,12 +113,32 @@ def create_map_file(map_load):
     file.close()
 
 
+def path_clear(hitbox):
+    tile_type = None
+    corners = []
+    types = []
+    corners.append((gameMap.player_pos_x - player.hitbox, gameMap.player_pos_y - player.hitbox))
+    corners.append((gameMap.player_pos_x + player.hitbox, gameMap.player_pos_y - player.hitbox))
+    corners.append((gameMap.player_pos_x + player.hitbox, gameMap.player_pos_y + player.hitbox))
+    corners.append((gameMap.player_pos_x - player.hitbox, gameMap.player_pos_y + player.hitbox))
+    for point in corners:
+        tile_pos_x = point[0] // 64
+        tile_pos_y = point[1] // 64
+        tile_type = gameMap.map_matrix[tile_pos_x][tile_pos_y]
+        print("pos X: " + str(tile_pos_x) + "  pos Y: " + str(tile_pos_y))
+        types.append(tile_type)
+
+    #print(types)
+
+    return tile_type
+
+
 class Map:
     def __init__(self, width, height, spawn_x, spawn_y):
         self.width = width
         self.height = height
-        self.spawn_x = spawn_x
-        self.spawn_y = spawn_y
+        self.player_pos_x = spawn_x
+        self.player_pos_y = spawn_y
         self.current_corner_pos_x = spawn_x
         self.current_corner_pos_y = spawn_y
         self.tiles_x = self.width // 64
@@ -166,13 +186,14 @@ class Map:
     def background_move(self):
         """Moves all of the background objects when the player moves"""
         if key_pressed["left"]:
-            self.spawn_x -= player.speed//5
+
+            self.player_pos_x -= player.speed // 5
         if key_pressed["right"]:
-            self.spawn_x += player.speed//5
+            self.player_pos_x += player.speed // 5
         if key_pressed["down"]:
-            self.spawn_y += player.speed//5
+            self.player_pos_y += player.speed // 5
         if key_pressed["up"]:
-            self.spawn_y -= player.speed//5
+            self.player_pos_y -= player.speed // 5
 
     def initialize(self):
         """method loads background images into memory for later use in draw() method"""
@@ -184,8 +205,8 @@ class Map:
         for y in range(self.tiles_y):
             for x in range(self.tiles_x):
                 if self.map_matrix[x][y] != 0:
-                    window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.spawn_x
-                            , self.spawn_y)[0], (x * 64) - location_from_map(self.spawn_x, self.spawn_y)[1]))
+                    window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.player_pos_x
+                                                                                                   , self.player_pos_y)[0], (x * 64) - location_from_map(self.player_pos_x, self.player_pos_y)[1]))
 
     def get_bkg_surface(self, tile_id):
         """implementation of different tiles based on title_id required"""
@@ -200,6 +221,7 @@ class Player(object):
     def __init__(self, width, height):
         self.width = width
         self.height = height
+        self.hitbox = 16
         self.speed = player_default_speed
         self.life = initialLife
         self.maxLife = initialLife
@@ -306,7 +328,7 @@ def keyListener():
 
 # OBJECT INSTANTIATION
 player = Player(48, 64)
-gameMap = Map(1984, 1984, 500, 500)
+gameMap = Map(1984, 1984, 640, 385)
 gameMap.initialize()
 gameMap.load_map("maps/map.txt")
 #create_map_file(gameMap.map_matrix)
@@ -323,7 +345,7 @@ options = Button('options', 790, 860, 860, 900, 'pixels/backgrounds/buttonUnpres
 
 # MAIN LOOP
 while run is True:
-    clock.tick(60)
+    clock.tick(10)
     redraw_game_window()
     keyListener()
     gameMap.background_move()
@@ -333,7 +355,9 @@ while run is True:
     player.draw()
     obstacle.background_move()
     obstacle.draw()
+    path_clear(player.hitbox)
     draw_bottom_Pane()
+
     mouseClickListener()
 
     for event in pygame.event.get():
