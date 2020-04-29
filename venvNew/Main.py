@@ -12,7 +12,7 @@ drawableObjects = []
 windowName = 'Game Window'
 fpsCounter = 0
 fpsFullSec = 0
-player_default_speed = 30
+player_default_speed = 10
 initialLife = 100
 initialMana = 100
 windowCenter = (640, 385)
@@ -62,9 +62,11 @@ class Button(object):
 
 
 class GameObj(object):
-    def __init__(self, map_pos_x, map_pos_y, pic_url, direction=0):
-        self.map_pos_x = map_pos_x
-        self.map_pos_y = map_pos_y
+    def __init__(self, map_tile_pos_x, map_tile_pos_y, pic_url, direction=0):
+        self.map_pos_x = map_tile_pos_x
+        self.map_pos_y = map_tile_pos_y
+        self.abs_pos_x = -64
+        self.abs_pos_y = -64
         self.pic_url = pic_url
         self.direction = direction
         self.img = self.get_obj_img()
@@ -84,28 +86,21 @@ class GameObj(object):
     def background_move(self):
         """Moves all of the background objects when the player moves"""
         if key_pressed["right"]:
-            self.map_pos_x -= player.speed//5
+            self.abs_pos_x -= player.speed // 5
         if key_pressed["left"]:
-            self.map_pos_x += player.speed//5
+            self.abs_pos_x += player.speed // 5
         if key_pressed["up"]:
-            self.map_pos_y += player.speed//5
+            self.abs_pos_y += player.speed // 5
         if key_pressed["down"]:
-            self.map_pos_y -= player.speed//5
+            self.abs_pos_y -= player.speed // 5
 
     def draw(self):
-        window.blit(self.img, location_from_map(self.map_pos_x, self.map_pos_y))
-
-
-def location_from_map(map_pos_x, map_pos_y):
-    """defines where on the window the element should be displayed based on window pos and map corner"""
-    pos_x = map_pos_x - gameMap.current_corner_pos_x
-    pos_y = map_pos_y - gameMap.current_corner_pos_y
-    location = (pos_x, pos_y)
-    return location
+        window.blit(self.img, (self.map_pos_x * 64 + windowCenter[0] + self.abs_pos_x - 32,
+                               self.map_pos_y * 64 + windowCenter[1] + self.abs_pos_y - 32))
 
 
 def create_map_file(map_load):
-    file = open ("maps/map.txt", "w+")
+    file = open("maps/map.txt", "w+")
     for line in range(len(map_load)):
         for tile in range(len(map_load[line])):
             file.write(str(map_load[line][tile]))
@@ -125,24 +120,18 @@ def path_clear(hitbox):
         tile_pos_x = point[0] // 64
         tile_pos_y = point[1] // 64
         tile_type = gameMap.map_matrix[tile_pos_x][tile_pos_y]
-        print("pos X: " + str(tile_pos_x) + "  pos Y: " + str(tile_pos_y))
         types.append(tile_type)
-
-    #print(types)
-
     return tile_type
 
 
 class Map:
-    def __init__(self, width, height, spawn_x, spawn_y):
-        self.width = width
-        self.height = height
-        self.player_pos_x = spawn_x
-        self.player_pos_y = spawn_y
-        self.current_corner_pos_x = spawn_x
-        self.current_corner_pos_y = spawn_y
-        self.tiles_x = self.width // 64
-        self.tiles_y = self.height // 64
+    def __init__(self, tile_width, tile_height, tile_spawn_x, tile_spawn_y):
+        self.tile_width = tile_width
+        self.tile_height = tile_height
+        self.tile_spawn_x = tile_spawn_x
+        self.tile_spawn_y = tile_spawn_y
+        self.player_pos_x = (tile_spawn_x * 64) - 32
+        self.player_pos_y = (tile_spawn_y * 64) - 32
         self.row = []
         self.map_matrix = []
         self.map_img = []
@@ -156,26 +145,27 @@ class Map:
         with open(map_pointer, 'r') as mapFile:
             while True:
                 self.line = mapFile.readline()
+                for y in range(self.line.__len__() - 1):
+                    self.map_matrix[self.line_counter][y] = int(self.line[y])
+                self.line_counter += 1
                 if self.line == "":
                     print("loaded all lines from map file")
                     break
-                else:
-                    for y in range(self.line.__len__() - 1):
-                        self.map_matrix[self.line_counter][y] = int(self.line[y])
-                self.line_counter += 1
+
+                #print(self.map_matrix)
 
     def initialize_map(self):
         """builds initial map template"""
-        for y in range(self.tiles_y):
-            for x in range(self.tiles_x):
-                    self.row.append(0)
+        for y in range(self.tile_height):
+            for x in range(self.tile_width):
+                self.row.append(0)
             self.map_matrix.append(self.row)
             self.row = []
 
     def generate_new_map(self, wall_count=3):
         """generates new random map"""
-        for y in range(self.tiles_y):
-            for x in range(self.tiles_x):
+        for y in range(self.tile_height):
+            for x in range(self.tile_width):
                 if random.randint(0, wall_count) == wall_count:
                     self.row.append(0)
                 else:
@@ -186,7 +176,6 @@ class Map:
     def background_move(self):
         """Moves all of the background objects when the player moves"""
         if key_pressed["left"]:
-
             self.player_pos_x -= player.speed // 5
         if key_pressed["right"]:
             self.player_pos_x += player.speed // 5
@@ -202,11 +191,12 @@ class Map:
 
     def draw(self):
         """Draws the background based on the map_matrix"""
-        for y in range(self.tiles_y):
-            for x in range(self.tiles_x):
-                if self.map_matrix[x][y] != 0:
-                    window.blit(self.map_img[self.map_matrix[x][y]], ((y * 64) - location_from_map(self.player_pos_x
-                                                                                                   , self.player_pos_y)[0], (x * 64) - location_from_map(self.player_pos_x, self.player_pos_y)[1]))
+        for y in range(self.tile_height):
+            for x in range(self.tile_width):
+                if self.map_matrix[y][x] != 0:
+                    window.blit(self.map_img[self.map_matrix[y][x]],
+                                ((x * 64) - self.player_pos_x + windowCenter[0],
+                                 (y * 64) - self.player_pos_y + windowCenter[1]))
 
     def get_bkg_surface(self, tile_id):
         """implementation of different tiles based on title_id required"""
@@ -328,11 +318,11 @@ def keyListener():
 
 # OBJECT INSTANTIATION
 player = Player(48, 64)
-gameMap = Map(1984, 1984, 640, 385)
+gameMap = Map(10, 10, 1, 1)
 gameMap.initialize()
 gameMap.load_map("maps/map.txt")
-#create_map_file(gameMap.map_matrix)
-obstacle = GameObj(800, 800, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
+# create_map_file(gameMap.map_matrix)
+obstacle = GameObj(3, 3, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
 
 inventory = Button('inventory', 418, 860, 488, 900, 'pixels/backgrounds/buttonUnpressedInventory.png',
                    'pixels/backgrounds/buttonPressedInventory.png')
@@ -345,16 +335,16 @@ options = Button('options', 790, 860, 860, 900, 'pixels/backgrounds/buttonUnpres
 
 # MAIN LOOP
 while run is True:
-    clock.tick(10)
+    clock.tick(60)
     redraw_game_window()
     keyListener()
     gameMap.background_move()
     gameMap.draw()
     show_title_and_fps()
     get_mouse_angle()
-    player.draw()
     obstacle.background_move()
     obstacle.draw()
+    player.draw()
     path_clear(player.hitbox)
     draw_bottom_Pane()
 
