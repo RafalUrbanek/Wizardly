@@ -72,19 +72,47 @@ class GameObj(object):
 
     def get_obj_img(self):
         img = pygame.image.load(self.pic_url)
-        if self.direction == 1:
-            rotated_img = pygame.transform.rotate(img, 90).convert()
-        elif self.direction == 2:
-            rotated_img = pygame.transform.rotate(img, 180).convert()
-        elif self.direction == 3:
-            rotated_img = pygame.transform.rotate(img, 270).convert()
-        else:
-            rotated_img = img.convert()
+        rotated_img = pygame.transform.rotate(img, self.direction).convert()
         return rotated_img
 
     def draw(self):
         window.blit(self.img, (self.map_pos_x * 64 - gameMap.player_pos_x + windowCenter[0], self.map_pos_y * 64 -
                                gameMap.player_pos_y + windowCenter[1]))
+
+
+def draw_objects():
+    for drw_object in drawableObjects:
+        drw_object.draw()
+
+
+class Projectile(object):
+    def __init__(self, pos_x=windowCenter[0], pos_y=windowCenter[1], projectile_type=1, velocity=20, effect_type=0,
+                 duration=100):
+
+        self.pos_x = pos_x
+        self.pos_y = pos_y
+        self.projectile = projectile_type
+        self.velocity = velocity
+        self.effect = effect_type
+        self.counter = duration
+        self.direction = get_mouse_angle()
+        self.img = self.get_obj_img()
+        self.origin_x = gameMap.player_pos_x
+        self.origin_y = gameMap.player_pos_y
+
+    def get_obj_img(self):
+        if self.projectile == 1:
+            img = pygame.image.load("pixels/projectiles/arrow.png")
+            rotated_img = pygame.transform.rotate(img, self.direction)
+            return rotated_img
+
+    def draw(self):
+        if self.counter > 0:
+            window.blit(self.img, (self.pos_x - 32 + (self.origin_x - gameMap.player_pos_x),
+                                   self.pos_y - 32 + (self.origin_y - gameMap.player_pos_y)))
+            self.counter -= 1
+        else:
+            del self
 
 
 def create_map_file(map_load):
@@ -233,21 +261,29 @@ def get_mouse_angle():
     y = -(mouse_pos[1] - windowCenter[1])
     mouse_angle = (math.atan2(y, x) * 180) / math.pi
 
-    return int(mouse_angle + 180)
+    return int(mouse_angle)
+
+
+def game_click():
+    global drawableObjects
+    drawableObjects.append(Projectile())
 
 
 def mouseClickListener():
     mouse_position = pygame.mouse.get_pos()
     mouse_click = pygame.mouse.get_pressed()
     if mouse_click[0]:
-        for btn in buttonsDictionary:
-            if buttonsDictionary[btn][0][0] < mouse_position[0] < buttonsDictionary[btn][1][0] and \
-                    buttonsDictionary[btn][0][1] < mouse_position[1] < buttonsDictionary[btn][1][1]:
-                command = btn + ".is_clicked = True"
-                exec(command)
-            else:
-                command = btn + ".is_clicked = False"
-                exec(command)
+        if mouse_position[1] < 770:
+            game_click()
+        else:
+            for btn in buttonsDictionary:
+                if buttonsDictionary[btn][0][0] < mouse_position[0] < buttonsDictionary[btn][1][0] and \
+                        buttonsDictionary[btn][0][1] < mouse_position[1] < buttonsDictionary[btn][1][1]:
+                    command = btn + ".is_clicked = True"
+                    exec(command)
+                else:
+                    command = btn + ".is_clicked = False"
+                    exec(command)
     else:
         unclick_buttons()
 
@@ -344,6 +380,7 @@ while run is True:
     keyListener()
     background_move()
     gameMap.draw()
+    draw_objects()
     show_title_and_fps()
     get_mouse_angle()
     obstacle.draw()
