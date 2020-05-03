@@ -20,6 +20,7 @@ selectTool = (0, 0, 0, 0, 0, 0, 0, 0, 0)
 game_level = 1
 buttonsDictionary = {}
 key_pressed = {"left": False, "right": False, "up": False, "down": False}
+click_timer = 0
 
 run = True
 
@@ -87,7 +88,7 @@ def draw_objects():
 
 class Projectile(object):
     def __init__(self, pos_x=windowCenter[0], pos_y=windowCenter[1], projectile_type=1, velocity=20, effect_type=0,
-                 duration=100):
+                 duration=1):
 
         self.pos_x = pos_x
         self.pos_y = pos_y
@@ -99,6 +100,13 @@ class Projectile(object):
         self.img = self.get_obj_img()
         self.origin_x = gameMap.player_pos_x
         self.origin_y = gameMap.player_pos_y
+        self.stuck = False
+
+    def get_absolute_pos(self):
+        abs_pos = [0, 0]
+        abs_pos[0] = self.pos_x - windowCenter[0] + gameMap.player_pos_x
+        abs_pos[1] = self.pos_y - windowCenter[1] + gameMap.player_pos_y
+        return abs_pos
 
     def get_obj_img(self):
         if self.projectile == 1:
@@ -108,11 +116,22 @@ class Projectile(object):
 
     def draw(self):
         if self.counter > 0:
-            window.blit(self.img, (self.pos_x - 32 + (self.origin_x - gameMap.player_pos_x),
-                                   self.pos_y - 32 + (self.origin_y - gameMap.player_pos_y)))
+            window.blit(self.img, (self.pos_x - 32 + self.origin_x - gameMap.player_pos_x,
+                                   self.pos_y - 32 + self.origin_y - gameMap.player_pos_y))
             self.counter -= 1
-        else:
-            del self
+            if self.stuck is False:
+                if path_clear(self.get_absolute_pos()[0], self.get_absolute_pos()[1], 2)[1] != 0:
+                    self.pos_x += self.displacement()[0]
+                    self.pos_y -= self.displacement()[1]
+                else:
+                    self.stuck = True
+        del self
+
+    def displacement(self):
+        disp = [0, 0]
+        #disp[0] = int(math.cos(math.radians(self.direction)) * self.velocity)
+        #disp[1] = int(math.sin(math.radians(self.direction)) * self.velocity)
+        return disp
 
 
 def create_map_file(map_load):
@@ -134,6 +153,7 @@ def path_clear(obj_center_x, obj_center_y, hitbox):
     corners.append((obj_center_x - hitbox, obj_center_y + hitbox))
     for point in corners:
         tile_pos_x = point[0] // 64
+        print(tile_pos_x)
         tile_pos_y = point[1] // 64
         corner_location[counter] = gameMap.map_matrix[tile_pos_y][tile_pos_x]
         counter += 1
@@ -260,21 +280,26 @@ def get_mouse_angle():
     x = mouse_pos[0] - windowCenter[0]
     y = -(mouse_pos[1] - windowCenter[1])
     mouse_angle = (math.atan2(y, x) * 180) / math.pi
+    if mouse_angle < 0:
+        mouse_angle += 360
 
     return int(mouse_angle)
 
 
 def game_click():
-    global drawableObjects
     drawableObjects.append(Projectile())
 
 
 def mouseClickListener():
     mouse_position = pygame.mouse.get_pos()
     mouse_click = pygame.mouse.get_pressed()
+    global click_timer
     if mouse_click[0]:
         if mouse_position[1] < 770:
-            game_click()
+            if click_timer == 0:
+                game_click()
+                click_timer = 1
+
         else:
             for btn in buttonsDictionary:
                 if buttonsDictionary[btn][0][0] < mouse_position[0] < buttonsDictionary[btn][1][0] and \
@@ -376,18 +401,21 @@ options = Button('options', 790, 860, 860, 900, 'pixels/backgrounds/buttonUnpres
 # MAIN LOOP
 while run is True:
     clock.tick(60)
-    redraw_game_window()
+    if click_timer != 0:
+        click_timer -= 1
+
     keyListener()
+    mouseClickListener()
+
+    redraw_game_window()
+    show_title_and_fps()
     background_move()
     gameMap.draw()
-    draw_objects()
-    show_title_and_fps()
-    get_mouse_angle()
+
     obstacle.draw()
     player.draw()
     draw_bottom_Pane()
-
-    mouseClickListener()
+    draw_objects()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
