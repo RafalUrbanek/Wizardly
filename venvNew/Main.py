@@ -88,15 +88,18 @@ def draw_objects():
 
 class Projectile(object):
     def __init__(self, pos_x=windowCenter[0], pos_y=windowCenter[1], projectile_type=1, velocity=20, effect_type=0,
-                 duration=1):
+                 duration=100):
 
         self.pos_x = pos_x
+        self.fine_pos_x = pos_x
         self.pos_y = pos_y
+        self.fine_pos_y = pos_y
         self.projectile = projectile_type
         self.velocity = velocity
         self.effect = effect_type
         self.counter = duration
         self.direction = get_mouse_angle()
+        self.img_size = [0, 0]
         self.img = self.get_obj_img()
         self.origin_x = gameMap.player_pos_x
         self.origin_y = gameMap.player_pos_y
@@ -104,33 +107,38 @@ class Projectile(object):
 
     def get_absolute_pos(self):
         abs_pos = [0, 0]
-        abs_pos[0] = self.pos_x - windowCenter[0] + gameMap.player_pos_x
-        abs_pos[1] = self.pos_y - windowCenter[1] + gameMap.player_pos_y
+        abs_pos[0] = self.pos_x - windowCenter[0] + self.origin_x
+        abs_pos[1] = self.pos_y - windowCenter[1] + self.origin_y
         return abs_pos
 
     def get_obj_img(self):
         if self.projectile == 1:
             img = pygame.image.load("pixels/projectiles/arrow.png")
+            self.img_size = img.get_rect().size
             rotated_img = pygame.transform.rotate(img, self.direction)
             return rotated_img
 
     def draw(self):
+        new_img_size = self.img.get_rect().size
+        displacement = new_img_size[0]/2 - self.img_size[0]/2
         if self.counter > 0:
-            window.blit(self.img, (self.pos_x - 32 + self.origin_x - gameMap.player_pos_x,
-                                   self.pos_y - 32 + self.origin_y - gameMap.player_pos_y))
+            window.blit(self.img, (int(self.pos_x - 32 + (self.origin_x - gameMap.player_pos_x) - displacement),
+                                   int(self.pos_y - 32 + (self.origin_y - gameMap.player_pos_y) - displacement)))
             self.counter -= 1
             if self.stuck is False:
                 if path_clear(self.get_absolute_pos()[0], self.get_absolute_pos()[1], 2)[1] != 0:
-                    self.pos_x += self.displacement()[0]
-                    self.pos_y -= self.displacement()[1]
+                    self.fine_pos_x += self.displacement()[0]
+                    self.fine_pos_y -= self.displacement()[1]
+                    self.pos_x = int(self.fine_pos_x)
+                    self.pos_y = int(self.fine_pos_y)
                 else:
                     self.stuck = True
         del self
 
     def displacement(self):
         disp = [0, 0]
-        #disp[0] = int(math.cos(math.radians(self.direction)) * self.velocity)
-        #disp[1] = int(math.sin(math.radians(self.direction)) * self.velocity)
+        disp[0] = math.cos(math.radians(self.direction)) * self.velocity
+        disp[1] = math.sin(math.radians(self.direction)) * self.velocity
         return disp
 
 
@@ -153,7 +161,6 @@ def path_clear(obj_center_x, obj_center_y, hitbox):
     corners.append((obj_center_x - hitbox, obj_center_y + hitbox))
     for point in corners:
         tile_pos_x = point[0] // 64
-        print(tile_pos_x)
         tile_pos_y = point[1] // 64
         corner_location[counter] = gameMap.map_matrix[tile_pos_y][tile_pos_x]
         counter += 1
@@ -298,7 +305,7 @@ def mouseClickListener():
         if mouse_position[1] < 770:
             if click_timer == 0:
                 game_click()
-                click_timer = 1
+                click_timer = 100
 
         else:
             for btn in buttonsDictionary:
