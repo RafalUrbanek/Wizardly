@@ -2,6 +2,8 @@ import random
 import pygame
 import math
 
+from venvNew import DungeonGenerator
+
 pygame.init()
 
 # VARIABLES
