@@ -3,7 +3,6 @@ import random
 
 
 class DungeonMap:
-
     def __init__(self, width, height, spawn_x, spawn_y):
         self.width = width
         self.height = height
@@ -12,6 +11,7 @@ class DungeonMap:
         self.row = []
         self.map_matrix = []
         self.stairs_pos = []
+        self.rooms = []
         self.initialize()
         self.generate()
 
@@ -65,6 +65,7 @@ class DungeonMap:
             attempts -= 1
         print("rooms generated")
 
+        #  place stairs in one of the rooms
         while True:
             valid = True
             position = (random.randint(0, self.width-4), random.randint(0, self.height-4))
@@ -78,6 +79,52 @@ class DungeonMap:
                 self.map_matrix[self.stairs_pos[1]][self.stairs_pos[0]] = Cell(3)
                 break
 
+        self.build_corridors()
+
+    def build_corridors(self):
+
+        # connect spawn room with random room
+        room_pick = random.randint(0, len(self.rooms) - 1)
+        self.build_two_point_connection(self.spawn_x, self.spawn_y, self.rooms[room_pick].center_x, self.rooms[room_pick].center_y)
+        self.rooms[room_pick].connected = True
+        print("rooms connected: spawn & " + str(room_pick))
+
+    def pick_unconnected_room(self, room_1, room_2):
+        while True:
+            if room_1 == room_2:
+                room_2 = random.randint(0, len(self.rooms) - 1)
+            else:
+                break
+
+    def build_two_point_connection(self, x1, y1, x2, y2):
+        tile = [x1, y1]
+        difference_x = x2 - tile[0]
+        difference_y = y2 - tile[1]
+
+        while tile[0] != x2 or tile[1] != y2:
+            print(tile[0], tile[1], end='')
+            print("   goal ", x2, y2)
+            if self.map_matrix[tile[1]][tile[0]].tile_id == 0:
+                self.map_matrix[tile[1]][tile[0]].tile_id = 1
+                self.map_matrix[tile[1]][tile[0]].passable = True
+            dir = random.randint(0, 1)
+
+            if dir == 0:  # move in x
+                if difference_x > 0:
+                    tile[0] += 1
+                    difference_x -= 1
+                elif difference_x < 0:
+                    tile[0] -= 1
+                    difference_x += 1
+
+            else:  # move in y
+                if difference_y > 0:
+                    tile[1] += 1
+                    difference_y -= 1
+                elif difference_y < 0:
+                    tile[1] -= 1
+                    difference_y += 1
+
     def test_room_position(self, room_spawn_x, room_spawn_y, room_size):
         valid = True
         for y in range(room_spawn_y - (room_size // 2) - 1, room_spawn_y + (room_size // 2) + 1):
@@ -89,19 +136,20 @@ class DungeonMap:
         return valid
 
     def build_room(self, room_spawn_x, room_spawn_y, room_size):
-        for y in range(room_spawn_y - (room_size // 2), room_spawn_y + (room_size // 2)):
-            for x in range(room_spawn_x - (room_size // 2), room_spawn_x + (room_size // 2)):
+        self.rooms.append(Room(room_spawn_x, room_spawn_y, room_size + 1, room_size + 1))
+        for y in range(room_spawn_y - (room_size // 2) + 1, room_spawn_y + (room_size // 2)):
+            for x in range(room_spawn_x - (room_size // 2) + 1, room_spawn_x + (room_size // 2)):
                 self.map_matrix[y][x] = Cell()
 
     def get_room_size(self):
         if self.width < 20 or self.height < 20:
-            return random.randint(2, 3) * 2
+            return random.randint(3, 4) * 2
         elif self.width < 40 or self.height < 40:
-            return random.randint(3, 5) * 2
+            return random.randint(4, 6) * 2
         elif self.width < 80 or self.height < 80:
-            return random.randint(3, 7) * 2
+            return random.randint(4, 8) * 2
         else:
-            return random.randint(4, 9) * 2
+            return random.randint(5, 10) * 2
 
 
 class Cell:
@@ -111,9 +159,21 @@ class Cell:
         self.item_id = item_id
 
 
+class Room:
+    def __init__(self, center_x, center_y,  width, height):
+        self.center_x = center_x
+        self.center_y = center_y
+        self.width = width
+        self.height = height
+        self.connected = False
+
+    def print(self):
+        print("center point: " + str(self.center_x) + " " + str(self.center_y))
+
+
 class PrintMap:
     """Temporary class for visualising generated data"""
-    map = DungeonMap(40, 19, 1, 1)
+    map = DungeonMap(60, 19, 2, 2)
     for line in range(len(map.map_matrix)):
         for cell in range(len(map.map_matrix[line])):
             if map.map_matrix[line][cell].tile_id == 1:
@@ -125,6 +185,8 @@ class PrintMap:
             elif map.map_matrix[line][cell].tile_id == 2:  # temporary symbol for corridor
                 print(u'\u2591', end='')
         print()
+    for room in map.rooms:
+        room.print()
 
 
 PrintMap()
