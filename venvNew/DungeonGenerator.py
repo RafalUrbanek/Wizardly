@@ -102,8 +102,6 @@ class DungeonMap:
         difference_y = y2 - tile[1]
 
         while tile[0] != x2 or tile[1] != y2:
-            print(tile[0], tile[1], end='')
-            print("   goal ", x2, y2)
             if self.map_matrix[tile[1]][tile[0]].tile_id == 0:
                 self.map_matrix[tile[1]][tile[0]].tile_id = 1
                 self.map_matrix[tile[1]][tile[0]].passable = True
@@ -125,6 +123,23 @@ class DungeonMap:
                     tile[1] -= 1
                     difference_y += 1
 
+            # mark the room as connected
+            if self.map_matrix[tile[1]][tile[0]].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+                self.rooms[room_number].connected = True
+            if self.map_matrix[tile[1]-1][tile[0]].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+                self.rooms[room_number].connected = True
+            if self.map_matrix[tile[1]][tile[0]-1].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+                self.rooms[room_number].connected = True
+            if self.map_matrix[tile[1]+1][tile[0]].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+                self.rooms[room_number].connected = True
+            if self.map_matrix[tile[1]][tile[0]+1].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+                self.rooms[room_number].connected = True
+
     def test_room_position(self, room_spawn_x, room_spawn_y, room_size):
         valid = True
         for y in range(room_spawn_y - (room_size // 2) - 1, room_spawn_y + (room_size // 2) + 1):
@@ -139,7 +154,7 @@ class DungeonMap:
         self.rooms.append(Room(room_spawn_x, room_spawn_y, room_size + 1, room_size + 1))
         for y in range(room_spawn_y - (room_size // 2) + 1, room_spawn_y + (room_size // 2)):
             for x in range(room_spawn_x - (room_size // 2) + 1, room_spawn_x + (room_size // 2)):
-                self.map_matrix[y][x] = Cell()
+                self.map_matrix[y][x] = Cell(belongs_to=len(self.rooms) - 1)
 
     def get_room_size(self):
         if self.width < 20 or self.height < 20:
@@ -153,10 +168,11 @@ class DungeonMap:
 
 
 class Cell:
-    def __init__(self, tile_id=1, passable=True, item_id=0):
+    def __init__(self, tile_id=1, passable=True, item_id=0, belongs_to=-1):
         self.tile_id = tile_id
         self.passable = passable
         self.item_id = item_id
+        self.belongs_to = belongs_to
 
 
 class Room:
@@ -166,9 +182,6 @@ class Room:
         self.width = width
         self.height = height
         self.connected = False
-
-    def print(self):
-        print("center point: " + str(self.center_x) + " " + str(self.center_y))
 
 
 class PrintMap:
@@ -185,8 +198,8 @@ class PrintMap:
             elif map.map_matrix[line][cell].tile_id == 2:  # temporary symbol for corridor
                 print(u'\u2591', end='')
         print()
-    for room in map.rooms:
-        room.print()
+    for x in range(len(map.rooms)):
+        print("room: " + str(x) + "  connected: " + str(map.rooms[x].connected))
 
 
 PrintMap()
