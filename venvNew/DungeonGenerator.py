@@ -2,8 +2,8 @@ import math
 import random
 
 
-class DungeonMap:
-    def __init__(self, width, height, spawn_x, spawn_y):
+class Map:
+    def __init__(self, width=50, height=50, spawn_x=2, spawn_y=2):
         self.width = width
         self.height = height
         self.spawn_x = spawn_x
@@ -68,7 +68,7 @@ class DungeonMap:
         #  place stairs in one of the rooms
         while True:
             valid = True
-            position = (random.randint(0, self.width-4), random.randint(0, self.height-4))
+            position = (random.randint(0, self.width - 4), random.randint(0, self.height - 4))
             for y in range(position[1], position[1] + 4):
                 for x in range(position[0], position[0] + 4):
                     if self.map_matrix[y][x].tile_id == 0:
@@ -82,19 +82,32 @@ class DungeonMap:
         self.build_corridors()
 
     def build_corridors(self):
-
-        # connect spawn room with random room
         room_pick = random.randint(0, len(self.rooms) - 1)
-        self.build_two_point_connection(self.spawn_x, self.spawn_y, self.rooms[room_pick].center_x, self.rooms[room_pick].center_y)
-        self.rooms[room_pick].connected = True
-        print("rooms connected: spawn & " + str(room_pick))
+        self.build_two_point_connection(self.spawn_x, self.spawn_y, self.rooms[room_pick].center_x,
+                                        self.rooms[room_pick].center_y)
+        initial_connection = False
 
-    def pick_unconnected_room(self, room_1, room_2):
-        while True:
-            if room_1 == room_2:
-                room_2 = random.randint(0, len(self.rooms) - 1)
-            else:
-                break
+        while self.unconnected_rooms():
+
+            while True:
+                connected_room_pick = random.randint(0, len(self.rooms) - 1)
+                if self.rooms[connected_room_pick].connected:
+                    break
+
+            while True:
+                unconnected_room_pick = random.randint(0, len(self.rooms) - 1)
+                if not self.rooms[unconnected_room_pick].connected:
+                    break
+
+            self.build_two_point_connection(self.rooms[connected_room_pick].center_x, self.rooms[connected_room_pick].center_y,
+                                            self.rooms[unconnected_room_pick].center_x, self.rooms[unconnected_room_pick].center_y)
+
+    def unconnected_rooms(self):
+        unconnected_rooms_remaining = False
+        for room in self.rooms:
+            if not room.connected:
+                unconnected_rooms_remaining = True
+        return unconnected_rooms_remaining
 
     def build_two_point_connection(self, x1, y1, x2, y2):
         tile = [x1, y1]
@@ -105,9 +118,9 @@ class DungeonMap:
             if self.map_matrix[tile[1]][tile[0]].tile_id == 0:
                 self.map_matrix[tile[1]][tile[0]].tile_id = 1
                 self.map_matrix[tile[1]][tile[0]].passable = True
-            dir = random.randint(0, 1)
+            direction = random.randint(0, 1)
 
-            if dir == 0:  # move in x
+            if direction == 0:  # move in x
                 if difference_x > 0:
                     tile[0] += 1
                     difference_x -= 1
@@ -127,17 +140,17 @@ class DungeonMap:
             if self.map_matrix[tile[1]][tile[0]].belongs_to != -1:
                 room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
                 self.rooms[room_number].connected = True
-            if self.map_matrix[tile[1]-1][tile[0]].belongs_to != -1:
-                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+            if self.map_matrix[tile[1] - 1][tile[0]].belongs_to != -1:
+                room_number = self.map_matrix[tile[1] - 1][tile[0]].belongs_to
                 self.rooms[room_number].connected = True
-            if self.map_matrix[tile[1]][tile[0]-1].belongs_to != -1:
-                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+            if self.map_matrix[tile[1]][tile[0] - 1].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0] - 1].belongs_to
                 self.rooms[room_number].connected = True
-            if self.map_matrix[tile[1]+1][tile[0]].belongs_to != -1:
-                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+            if self.map_matrix[tile[1] + 1][tile[0]].belongs_to != -1:
+                room_number = self.map_matrix[tile[1] + 1][tile[0]].belongs_to
                 self.rooms[room_number].connected = True
-            if self.map_matrix[tile[1]][tile[0]+1].belongs_to != -1:
-                room_number = self.map_matrix[tile[1]][tile[0]].belongs_to
+            if self.map_matrix[tile[1]][tile[0] + 1].belongs_to != -1:
+                room_number = self.map_matrix[tile[1]][tile[0] + 1].belongs_to
                 self.rooms[room_number].connected = True
 
     def test_room_position(self, room_spawn_x, room_spawn_y, room_size):
@@ -155,6 +168,7 @@ class DungeonMap:
         for y in range(room_spawn_y - (room_size // 2) + 1, room_spawn_y + (room_size // 2)):
             for x in range(room_spawn_x - (room_size // 2) + 1, room_spawn_x + (room_size // 2)):
                 self.map_matrix[y][x] = Cell(belongs_to=len(self.rooms) - 1)
+        # self.map_matrix[room_spawn_y][room_spawn_x] = Cell(tile_id=10, belongs_to=len(self.rooms) - 1)
 
     def get_room_size(self):
         if self.width < 20 or self.height < 20:
@@ -176,7 +190,7 @@ class Cell:
 
 
 class Room:
-    def __init__(self, center_x, center_y,  width, height):
+    def __init__(self, center_x, center_y, width, height):
         self.center_x = center_x
         self.center_y = center_y
         self.width = width
@@ -186,7 +200,7 @@ class Room:
 
 class PrintMap:
     """Temporary class for visualising generated data"""
-    map = DungeonMap(60, 19, 2, 2)
+    map = Map(60, 19, 2, 2)
     for line in range(len(map.map_matrix)):
         for cell in range(len(map.map_matrix[line])):
             if map.map_matrix[line][cell].tile_id == 1:
@@ -197,9 +211,7 @@ class PrintMap:
                 print(u'\u2599', end='')
             elif map.map_matrix[line][cell].tile_id == 2:  # temporary symbol for corridor
                 print(u'\u2591', end='')
+            elif map.map_matrix[line][cell].tile_id == 10:  # center of the room number mark for map_building purposes
+                print(map.map_matrix[line][cell].belongs_to, end='')
         print()
-    for x in range(len(map.rooms)):
-        print("room: " + str(x) + "  connected: " + str(map.rooms[x].connected))
 
-
-PrintMap()

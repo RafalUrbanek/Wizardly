@@ -122,7 +122,7 @@ class Projectile(object):
 
     def draw(self):
         new_img_size = self.img.get_rect().size
-        displacement = new_img_size[0]/2 - self.img_size[0]/2
+        displacement = new_img_size[0] / 2 - self.img_size[0] / 2
         if self.counter > 0:
             window.blit(self.img, (int(self.pos_x - 32 + (self.origin_x - gameMap.player_pos_x) - displacement),
                                    int(self.pos_y - 32 + (self.origin_y - gameMap.player_pos_y) - displacement)))
@@ -178,6 +178,10 @@ def get_bkg_surface(tile_id):
         pic = None
     elif tile_id == 1:
         pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
+    elif tile_id == 2:
+        pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
+    elif tile_id == 3:
+        pic = pygame.image.load('pixels/backgrounds/temp_tiles.png').convert()
     return pic
 
 
@@ -194,8 +198,12 @@ class Map:
         self.line = None
         self.line_counter = None
 
+        self.initialize()
+        self.generated_map = DungeonGenerator.Map(tile_width, tile_height, tile_spawn_x, tile_spawn_y)
+        self.map_matrix = self.generated_map.map_matrix
+
     def load_map(self, map_pointer):
-        """Loads map from the given map_pointer"""
+        """Loads map from the given map_pointer to map_matrix"""
         self.line_counter = 0
         with open(map_pointer, 'r') as mapFile:
             while True:
@@ -211,32 +219,28 @@ class Map:
         """builds initial map template"""
         for y in range(self.tile_height):
             for x in range(self.tile_width):
-                self.row.append(0)
+                self.row.append(DungeonGenerator.Cell())
             self.map_matrix.append(self.row)
             self.row = []
 
-    def generate_new_map(self, wall_count=3):
+    def generate_new_map(self):
         """generates new random map"""
-        for y in range(self.tile_height):
-            for x in range(self.tile_width):
-                if random.randint(0, wall_count) == wall_count:
-                    self.row.append(0)
-                else:
-                    self.row.append(1)
-            self.map_matrix.append(self.row)
-            self.row = []
+        self.map_matrix = DungeonGenerator.Map()
 
     def initialize(self):
         """method loads background images into memory for later use in draw() method"""
         self.map_img.append(get_bkg_surface(0))
         self.map_img.append(get_bkg_surface(1))
+        self.map_img.append(get_bkg_surface(2))
+        self.map_img.append(get_bkg_surface(3))
 
     def draw(self):
         """Draws the background based on the map_matrix"""
         for y in range(self.tile_height):
             for x in range(self.tile_width):
-                if self.map_matrix[y][x] != 0:
-                    window.blit(self.map_img[self.map_matrix[y][x]],
+                if self.map_matrix[y][x].tile_id != 0:
+                    print(self.map_matrix[y][x].tile_id)
+                    window.blit(self.map_img[self.map_matrix[y][x].tile_id],
                                 ((x * 64) - self.player_pos_x + windowCenter[0],
                                  (y * 64) - self.player_pos_y + windowCenter[1]))
 
@@ -391,10 +395,9 @@ def keyListener():
 
 # OBJECT INSTANTIATION
 player = Player(48, 64)
-gameMap = Map(10, 10, 1, 1)
+gameMap = Map(50, 50, 2, 2)
 obstacle = GameObj(2, 2, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
-gameMap.initialize()
-gameMap.load_map("maps/map.txt")
+# gameMap.load_map("maps/map.txt")
 # create_map_file(gameMap.map_matrix)
 
 
