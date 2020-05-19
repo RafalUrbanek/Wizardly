@@ -1,3 +1,4 @@
+import pickle
 import random
 import pygame
 import math
@@ -164,7 +165,8 @@ def path_clear(obj_center_x, obj_center_y, hitbox):
     for point in corners:
         tile_pos_x = point[0] // 64
         tile_pos_y = point[1] // 64
-        corner_location[counter] = gameMap.map_matrix[tile_pos_y][tile_pos_x]
+        corner_location[counter] = gameMap.map_matrix[tile_pos_y][tile_pos_x].passable
+        print(corner_location[counter])
         counter += 1
         if counter >= 4:
             counter = 0
@@ -222,10 +224,6 @@ class Map:
                 self.row.append(DungeonGenerator.Cell())
             self.map_matrix.append(self.row)
             self.row = []
-
-    def generate_new_map(self):
-        """generates new random map"""
-        self.map_matrix = DungeonGenerator.Map()
 
     def initialize(self):
         """method loads background images into memory for later use in draw() method"""
@@ -370,6 +368,17 @@ def background_move():
             gameMap.player_pos_y += player.speed // 5
 
 
+def save_map_matrix(map_class):
+    with open('level1.map', 'wb') as map_file:
+        pickle.dump(map_class, map_file)
+
+
+def load_map_matrix(map_pickle_file):
+    with open(map_pickle_file, 'rb') as map_pickle:
+        loaded_map_matrix = pickle.load(map_pickle)
+    return loaded_map_matrix
+
+
 def keyListener():
     key = pygame.key.get_pressed()
     if key[pygame.K_RIGHT]:
@@ -397,6 +406,9 @@ def keyListener():
 player = Player(48, 64)
 gameMap = Map(50, 50, 2, 2)
 obstacle = GameObj(2, 2, 'pixels/pack/props n decorations/generic-rpg-bridge.png')
+save_map_matrix(gameMap.map_matrix)
+loaded_matrix = load_map_matrix('level1.map')
+gameMap.map_matrix = loaded_matrix
 # gameMap.load_map("maps/map.txt")
 # create_map_file(gameMap.map_matrix)
 
